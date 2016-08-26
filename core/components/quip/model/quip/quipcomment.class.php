@@ -510,6 +510,14 @@ class quipComment extends xPDOSimpleObject {
         } else {
             $commentArray['replyUrl'] = '';
         }
+
+        // Load any custom field values.
+        $comment_fields = $this->xpdo->getCollection('quipCommentField', array('comment' => $this->get('id')));
+
+        foreach ($comment_fields as $comment_field) {
+            $commentArray[$comment_field->get('name')] = $comment_field->get('value');
+        }
+
         return $commentArray;
     }
 }
