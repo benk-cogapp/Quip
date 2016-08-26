@@ -43,12 +43,12 @@
         <field key="thread" dbtype="varchar" precision="255" phptype="string" null="false" default="" index="index" />
         <field key="parent" dbtype="integer" precision="10" phptype="integer" attributes="unsigned" null="false" default="0" index="index" />
         <field key="rank" dbtype="tinytext" phptype="string" />
-        
+
         <field key="author" dbtype="integer" precision="10" phptype="integer" attributes="unsigned" null="false" default="0" index="index" />
         <field key="body" dbtype="text" phptype="text" null="false" default="" />
         <field key="createdon" dbtype="datetime" phptype="datetime" null="true" />
         <field key="editedon" dbtype="datetime" phptype="datetime" null="true" />
-        <field key="approved" dbtype="tinyint" precision="1" phptype="boolean" attributes="unsigned" null="false" default="1" index="index" /> 
+        <field key="approved" dbtype="tinyint" precision="1" phptype="boolean" attributes="unsigned" null="false" default="1" index="index" />
         <field key="approvedon" dbtype="datetime" phptype="datetime" null="true" />
         <field key="approvedby" dbtype="integer" precision="10" phptype="integer" attributes="unsigned" null="false" default="0" index="index" />
         <field key="name" dbtype="varchar" precision="255" phptype="string" null="false" default="" />
@@ -98,6 +98,8 @@
         <composite alias="Children" class="quipComment" local="id" foreign="parent" cardinality="many" owner="local" />
         <composite alias="Ancestors" class="quipCommentClosure" local="id" foreign="ancestor" cardinality="many" owner="local" />
         <composite alias="Descendants" class="quipCommentClosure" local="id" foreign="descendant" cardinality="many" owner="local" />
+
+        <composite alias="Fields" class="quipCommentField" local="id" foreign="comment" cardinality="many" owner="local" />
     </object>
 
     <object class="quipCommentClosure" table="quip_comments_closure" extends="xPDOObject">
@@ -129,5 +131,18 @@
 
         <aggregate alias="Thread" class="quipThread" local="thread" foreign="name" cardinality="one" owner="foreign" />
         <aggregate alias="Comments" class="quipComment" local="thread" foreign="thread" cardinality="many" owner="local" />
+    </object>
+
+    <!-- Schema for additional comment fields -->
+    <object class="quipCommentField" table="quip_comment_fields" extends="xPDOSimpleObject">
+        <field key="comment" dbtype="int" precision="10" phptype="integer" attributes="unsigned" null="false" default="0" index="index" />
+        <field key="name" dbtype="varchar" precision="255" phptype="string" null="false" default="" />
+        <field key="value" dbtype="text" phptype="string" null="true" default="" />
+
+        <index alias="comment" name="comment" primary="false" unique="true" type="BTREE">
+            <column key="comment" length="" collation="A" null="false" />
+        </index>
+
+        <aggregate alias="Comment" class="quipComment" local="comment" foreign="id" cardinality="one" owner="foreign" />
     </object>
 </model>
