@@ -75,6 +75,8 @@ $allowedTags = $modx->getOption('quip.allowed_tags',$scriptProperties,'<br><b><i
 $preHooks = $modx->getOption('preHooks',$scriptProperties,'');
 $postHooks = $modx->getOption('postHooks',$scriptProperties,'');
 $unsubscribeAction = $modx->getOption('unsubscribeAction',$scriptProperties,'quip_unsubscribe');
+$validate = $modx->getOption('validate',$scriptProperties,'');
+$customFields = $modx->getOption('customFields',$scriptProperties,'');
 
 /* get parent and auth */
 $parent = $modx->getOption('quip_parent',$_REQUEST,$modx->getOption('parent',$scriptProperties,0));
@@ -105,11 +107,32 @@ if (!empty($_POST)) {
     $fields['email'] = strip_tags($fields['email']);
     $fields['website'] = strip_tags($fields['website']);
     
+    foreach (explode(',', $customFields) as $customField) {
+        $fields[$customField] = strip_tags($fields[$customField]);
+    }
+
     /* verify a message was posted */
     if (empty($fields['comment'])) $errors['comment'] = $modx->lexicon('quip.message_err_ns');
     if (empty($fields['name'])) $errors['name'] = $modx->lexicon('quip.name_err_ns');
     if (empty($fields['email'])) $errors['email'] = $modx->lexicon('quip.email_err_ns');
     
+    // Process custom field validators using regular expressions.
+    // The syntax for this is taken from Jot.
+    //
+    // @see http://wiki.modxcms.com/index.php/Jot
+    foreach (explode(',', $validate) as $validator) {
+        list($validatorField, $validatorMsg, $validatorPattern) = explode(':', $validator);
+
+        // If the field is added to the validator, it becomes required.
+        if (empty($fields[$validator]) && $validatorMsg) {
+            $errors[$validatorField] = $validatorMsg
+        }
+        // If it passes the basic validation, pattern match if a pattern is set.
+        elseif ($validatorPattern && !preg_match($validatorPattern, $fields[$validatorField])) {
+            $errors[$validatorField] = $validatorMsg
+        }
+    }
+
     if (!empty($_POST[$postAction]) && empty($errors)) {
         $comment = include_once $quip->config['processorsPath'].'web/comment/create.php';
         if (is_object($comment) && $comment instanceof quipComment) {
