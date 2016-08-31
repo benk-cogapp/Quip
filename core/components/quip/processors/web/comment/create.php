@@ -177,20 +177,38 @@ if ($this->hasAuth) {
     $comment->set('author', $modx->user->get('id'));
 }
 
-
 /* save comment */
 if ($comment->save() == false) {
     $errors['message'] = $modx->lexicon('quip.comment_err_save');
     return $errors;
-} elseif ($this->getProperty('requireAuth',false)) {
+} else {
+  // Add any custom fields
+  $customFields = explode(',', $this->getProperty('customFields',array(),'isset'));
+
+  foreach ($customFields as $customFieldName) {
+    if (isset($fields[$customFieldName])) {
+      $field = $modx->newObject('quipCommentField');
+      $field->set('comment', (int) $comment->get('id'));
+      $field->set('name', $customFieldName);
+      $field->set('value', $fields[$customFieldName]);
+      $field->save();
+    }
+  }
+
+  if ($this->getProperty('requireAuth', FALSE)) {
     /* if successful and requireAuth is true, update user profile */
     $profile = $modx->user->getOne('Profile');
     if ($profile) {
-        if (!empty($fields['name'])) $profile->set('fullname',$fields['name']);
-        if (!empty($fields['email'])) $profile->set('email',$fields['email']);
-        $profile->set('website',$fields['website']);
-        $profile->save();
+      if (!empty($fields['name'])) {
+        $profile->set('fullname', $fields['name']);
+      }
+      if (!empty($fields['email'])) {
+        $profile->set('email', $fields['email']);
+      }
+      $profile->set('website', $fields['website']);
+      $profile->save();
     }
+  }
 }
 
 /* if comment is approved, send emails */
