@@ -236,11 +236,14 @@ class QuipThreadReplyController extends QuipController {
     public function handlePost() {
         $fields = array();
         $errors = array();
+        $validate = $this->getProperty('validate','');
+        $customFields = $this->getProperty('customFields','');
+
         foreach ($_POST as $k => $v) {
             $fields[$k] = str_replace(array('[',']'),array('&#91;','&#93;'),$v);
         }
 
-        if(empty($fields[$this->getProperty('postAction','quip-post')]) &&
+        if (empty($fields[$this->getProperty('postAction','quip-post')]) &&
             empty($fields[$this->getProperty('previewAction','quip-preview')])) {
             return;
         }
@@ -251,10 +254,29 @@ class QuipThreadReplyController extends QuipController {
         if (isset($fields['parent'])) $fields['parent'] = $this->modx->sanitizeString($fields['parent']);
         if (isset($fields['thread'])) $fields['thread'] = $this->modx->sanitizeString($fields['thread']);
 
+        foreach (explode(',', $customFields) as $customField) {
+            $fields[$customField] = strip_tags($fields[$customField]);
+        }
+
         /* verify a message was posted */
         if (empty($fields['comment'])) $errors['comment'] = $this->modx->lexicon('quip.message_err_ns');
         if (empty($fields['name'])) $errors['name'] = $this->modx->lexicon('quip.name_err_ns');
         if (empty($fields['email'])) $errors['email'] = $this->modx->lexicon('quip.email_err_ns');
+
+        // Process custom field validators using regular expressions.
+        // The syntax for this is taken from Jot.
+        //
+        // @see http://wiki.modxcms.com/index.php/Jot
+        foreach (explode(',', $validate) as $validator) {
+            list($validatorField, $validatorMsg, $validatorPattern) = explode(':', $validator);
+
+            // If no pattern is supplied, use the basic 'required' pattern.
+            $validatorPattern = $validatorPattern ? $validatorPattern : '/.+/s';
+
+            if ($validatorMsg && !preg_match($validatorPattern, $fields[$validatorField])) {
+                $errors[$validatorField] = $validatorMsg;
+            }
+        }
 
         if (!empty($_POST[$this->getProperty('postAction','quip-post')]) && empty($errors)) {
             /** @var quipComment $comment */
