@@ -511,11 +511,20 @@ class quipComment extends xPDOSimpleObject {
             $commentArray['replyUrl'] = '';
         }
 
-        // Load any custom field values.
-        $comment_fields = $this->xpdo->getCollection('quipCommentField', array('comment' => $this->get('id')));
 
-        foreach ($comment_fields as $comment_field) {
-            $commentArray[$comment_field->get('name')] = $comment_field->get('value');
+        $customFieldsAllowed = explode(',', $this->getOption('customFields',$properties,''));
+
+        // Load any custom field values.
+        $customFieldsAvailable = $this->xpdo->getCollection('quipCommentField',array('comment' => $this->get('id')));
+
+        // Build outputs based on supplied customFields property. Escape all
+        // output for unsafe HTML entities.
+        foreach ($customFieldsAvailable as $customField) {
+            $customFieldName = $customField->get('name');
+
+            if (in_array($customFieldName, $customFieldsAllowed)) {
+                $commentArray[$customFieldName] = nl2br(htmlentities($customField->get('value'),ENT_QUOTES,'UTF-8'));
+            }
         }
 
         return $commentArray;
