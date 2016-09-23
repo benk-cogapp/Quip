@@ -153,7 +153,7 @@ class QuipReplyTest extends QuipTestCase {
      * @param boolean $userHasAuth
      * @dataProvider providerLoadReCaptcha
      */
-    public function testLoadReCaptcha($shouldLoad = true,$recaptcha = true,$disableRecaptchaWhenLoggedIn = true,$recaptchaTheme = 'clean',$userHasAuth = false) {
+    public function testLoadReCaptcha($shouldLoad = true,$recaptcha = true,$disableRecaptchaWhenLoggedIn = true,$recaptchaTheme = 'light',$userHasAuth = false) {
         $this->controller->setProperty('disableRecaptchaWhenLoggedIn',$disableRecaptchaWhenLoggedIn);
         $this->controller->setProperty('recaptcha',$recaptcha);
         $this->controller->setProperty('recaptchaTheme',$recaptchaTheme);
@@ -175,8 +175,8 @@ class QuipReplyTest extends QuipTestCase {
      */
     public function providerLoadReCaptcha() {
         return array(
-            array(true,true,true,'clean'),
-            array(false,true,true,'clean',true),
+            array(true,true,true,'light'),
+            array(false,true,true,'light',true),
             array(false,false),
         );
     }

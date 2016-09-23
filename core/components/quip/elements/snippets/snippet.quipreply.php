@@ -167,7 +167,7 @@ $useRecaptcha = (boolean)$modx->getOption('recaptcha',$scriptProperties,false);
 if ($useRecaptcha && !($disableRecaptchaWhenLoggedIn && $hasAuth) && !$hasPreview) {
     $recaptcha = $modx->getService('recaptcha','reCaptcha',$quip->config['modelPath'].'recaptcha/');
     if ($recaptcha instanceof reCaptcha) {
-        $recaptchaTheme = $modx->getOption('recaptchaTheme',$scriptProperties,'clean');
+        $recaptchaTheme = $modx->getOption('recaptchaTheme',$scriptProperties,'light');
         $html = $recaptcha->getHtml($recaptchaTheme);
         $modx->setPlaceholder('quip.recaptcha_html',$html);
     } else {

@@ -153,12 +153,10 @@ $properties = array(
         'desc' => 'quip.prop_reply_recaptchatheme_desc',
         'type' => 'list',
         'options' => array(
-            array('text' => 'quip.opt_red','value' => 'red'),
-            array('text' => 'quip.opt_white','value' => 'white'),
-            array('text' => 'quip.opt_clean','value' => 'clean'),
-            array('text' => 'quip.opt_blackglass','value' => 'blackglass'),
+            array('text' => 'quip.opt_dark','value' => 'dark'),
+            array('text' => 'quip.opt_light','value' => 'light'),
         ),
-        'value' => 'clean',
+        'value' => 'light',
         'lexicon' => 'quip:properties',
     ),
     array(

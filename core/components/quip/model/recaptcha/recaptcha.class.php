@@ -28,8 +28,6 @@
  * @package recaptcha
  */
 class reCaptcha {
-    const OPT_API_SERVER = 'api_server';
-    const OPT_API_SECURE_SERVER = 'api_secure_server';
     const OPT_API_VERIFY_SERVER = 'api_verify_server';
     const OPT_PRIVATE_KEY = 'privateKey';
     const OPT_PUBLIC_KEY = 'publicKey';
@@ -42,9 +40,7 @@ class reCaptcha {
             reCaptcha::OPT_PRIVATE_KEY => $this->modx->getOption('recaptcha.private_key',$config,''),
             reCaptcha::OPT_PUBLIC_KEY => $this->modx->getOption('recaptcha.public_key',$config,''),
             reCaptcha::OPT_USE_SSL => $this->modx->getOption('recaptcha.use_ssl',$config,false),
-            reCaptcha::OPT_API_SERVER => 'http://www.google.com/recaptcha/api/',
-            reCaptcha::OPT_API_SECURE_SERVER => 'https://www.google.com/recaptcha/api/',
-            reCaptcha::OPT_API_VERIFY_SERVER => 'api-verify.recaptcha.net',
+            reCaptcha::OPT_API_VERIFY_SERVER => 'https://www.google.com/recaptcha/api/siteverify?',
         ),$config);
     }
 
@@ -65,40 +61,19 @@ class reCaptcha {
     }
 
     /**
-     * Submits an HTTP POST to a reCAPTCHA server
-     * @param string $host
-     * @param string $path
-     * @param array $data
-     * @param int port
-     * @return array response
+     * Submits an HTTP GET to a reCAPTCHA server.
+     *
+     * @param string $path - url path to recaptcha server.
+     * @param array $data - array of parameters to be sent.
+     *
+     * @return array - response
      */
-    protected function httpPost($host, $path, array $data = array(), $port = 80) {
-        $data['privatekey'] = $this->config[reCaptcha::OPT_PRIVATE_KEY];
+    function httpGet($path, $data) {
         $req = $this->qsencode($data);
-
-        $http_request  = "POST $path HTTP/1.0\r\n";
-        $http_request .= "Host: $host\r\n";
-        $http_request .= "Content-Type: application/x-www-form-urlencoded;\r\n";
-        $http_request .= "Content-Length: " . strlen($req) . "\r\n";
-        $http_request .= "User-Agent: reCAPTCHA/PHP\r\n";
-        $http_request .= "\r\n";
-        $http_request .= $req;
-
-        $response = '';
-        if(false == ($fs = @fsockopen($host, $port, $errno, $errstr, 10))) {
-            return 'Could not open socket';
-        }
-
-        fwrite($fs, $http_request);
-        while (!feof($fs)) {
-            $response .= fgets($fs, 1160); // One TCP-IP packet
-        }
-        fclose($fs);
-        $response = explode("\r\n\r\n", $response, 2);
-
+        $response = file_get_contents($path . $req);
         return $response;
     }
-    
+
     /**
      * Gets the challenge HTML (javascript and non-javascript version).
      * This is called from the browser, and the resulting reCAPTCHA HTML widget
@@ -109,28 +84,29 @@ class reCaptcha {
 
      * @return string - The HTML to be embedded in the user's form.
      */
-    public function getHtml($theme = 'clean',$error = null) {
+    public function getHtml($theme = 'light') {
         if (empty($this->config[reCaptcha::OPT_PUBLIC_KEY])) {
             return $this->error($this->modx->lexicon('recaptcha.no_api_key'));
         }
 
-        /* use ssl or not */
-        $server = !empty($this->config[reCaptcha::OPT_USE_SSL]) ? $this->config[reCaptcha::OPT_API_SECURE_SERVER] : $this->config[reCaptcha::OPT_API_SERVER];
-
-        $errorpart = '';
-        if ($error) {
-           $errorpart = "&amp;error=" . $error;
-        }
-        $opt = array(
-            'theme' => $theme,
-            'lang' => $this->modx->getOption('cultureKey',null,'en'),
+        $opts = array(
+            'data-theme' => $theme,
+            'data-sitekey' => $this->config[reCaptcha::OPT_PUBLIC_KEY],
+            'hl' => $this->modx->getOption('cultureKey',null,'en'),
         );
-        return '<script type="text/javascript">var RecaptchaOptions = '.$this->modx->toJSON($opt).';</script><script type="text/javascript" src="'. $server . 'challenge?k=' . $this->config[reCaptcha::OPT_PUBLIC_KEY] . $errorpart . '"></script>
-        <noscript>
-                <iframe src="'. $server . 'noscript?k=' . $this->config[reCaptcha::OPT_PUBLIC_KEY] . $errorpart . '" height="300" width="500" frameborder="0"></iframe><br/>
-                <textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
-                <input type="hidden" name="recaptcha_response_field" value="manual_challenge"/>
-        </noscript>';
+
+        $optstrings = array();
+
+        foreach ($opts as $attr => $val) {
+            $optstrings[] = "{$attr}=\"{$val}\"";
+        }
+
+        $attributes = implode(' ', $optstrings);
+
+        $markup = '<script src="https://www.google.com/recaptcha/api.js" async defer></script>';
+        $markup .= '<div class="g-recaptcha" ' . $attributes . '></div>';
+
+        return $markup;
     }
 
     protected function error($message = '') {
@@ -148,117 +124,35 @@ class reCaptcha {
       * @param array $extra_params an array of extra variables to post to the server
       * @return ReCaptchaResponse
       */
-    public function checkAnswer ($remoteIp, $challenge, $responseField, $extraParams = array()) {
-        if (empty($this->config[reCaptcha::OPT_PRIVATE_KEY])) {
-            return $this->error($this->modx->lexicon('recaptcha.no_api_key'));
-        }
-
-        if (empty($remoteIp)) {
-            return $this->error($this->modx->lexicon('recaptcha.no_remote_ip'));
-        }
-
-        //discard spam submissions
-        if (empty($challenge) || empty($responseField)) {
-            return $this->error($this->modx->lexicon('recaptcha.empty_answer'));
+    public function checkAnswer($remoteIp, $response) {
+        // Discard empty solution submissions
+        if ($response == null || strlen($response) == 0) {
+            $reCaptchaResponse = new reCaptchaResponse();
+            $reCaptchaResponse->is_valid = false;
+            $reCaptchaResponse->error = 'missing-input';
+            return $reCaptchaResponse;
         }
 
         $verifyServer = $this->config[reCaptcha::OPT_API_VERIFY_SERVER];
-        $response = $this->httpPost($verifyServer,"/verify",array (
+
+        $getResponse = $this->httpGet($verifyServer,array (
             'remoteip' => $remoteIp,
-            'challenge' => $challenge,
-            'response' => $responseField,
-        ) + $extraParams);
+            'secret' => $this->config[reCaptcha::OPT_PRIVATE_KEY],
+            'response' => $response,
+        ));
 
-        $answers = explode("\n",$response[1]);
-        $response = new reCaptchaResponse();
+        $answers = json_decode($getResponse, true);
+        $reCaptchaResponse = new reCaptchaResponse();
 
-        if (trim($answers[0]) == 'true') {
-            $response->is_valid = true;
+        if ($answers['success'] === true) {
+            $reCaptchaResponse->is_valid = true;
         } else {
-            $response->is_valid = false;
-            $response->error = $answers [1];
-        }
-        return $response;
-    }
-
-    /**
-     * gets a URL where the user can sign up for reCAPTCHA. If your application
-     * has a configuration page where you enter a key, you should provide a link
-     * using this function.
-     * @param string $domain The domain where the page is hosted
-     * @param string $appname The name of your application
-     */
-    public function getSignupUrl ($domain = null, $appname = null) {
-        return "http://recaptcha.net/api/getkey?" .  $this->qsencode(array ('domain' => $domain, 'app' => $appname));
-    }
-
-    protected function aesPad($val) {
-        $block_size = 16;
-        $numpad = $block_size - (strlen ($val) % $block_size);
-        return str_pad($val, strlen ($val) + $numpad, chr($numpad));
-    }
-
-    /* Mailhide related code */
-    protected function aesEncrypt($val,$ky) {
-        if (!function_exists("mcrypt_encrypt")) {
-            return $this->error($this->modx->lexicon('recaptcha.mailhide_no_mcrypt'));
-        }
-        $mode=MCRYPT_MODE_CBC;
-        $enc=MCRYPT_RIJNDAEL_128;
-        $val= $this->aesPad($val);
-        return mcrypt_encrypt($enc, $ky, $val, $mode, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
-    }
-
-
-    protected function mailhideUrlbase64 ($x) {
-        return strtr(base64_encode ($x), '+/', '-_');
-    }
-
-    /* gets the reCAPTCHA Mailhide url for a given email, public key and private key */
-    public function mailhideUrl($email) {
-        if (empty($this->config[reCaptcha::OPT_PUBLIC_KEY]) || empty($this->config[reCaptcha::OPT_PRIVATE_KEY])) {
-            return $this->error($this->modx->lexicon('recaptcha.mailhide_no_api_key'));
+            $reCaptchaResponse->is_valid = false;
+            $reCaptchaResponse->error = $answers['error-codes'];
         }
 
-        $ky = pack('H*',$this->config[reCaptcha::OPT_PRIVATE_KEY]);
-        $cryptmail = $this->aesEncrypt($email, $ky);
-        return 'http://mailhide.recaptcha.net/d?k='
-            . $this->config[reCaptcha::OPT_PUBLIC_KEY]
-            . '&c=' . $this->mailhideUrlbase64($cryptmail);
+        return $reCaptchaResponse;
     }
-
-    /**
-     * gets the parts of the email to expose to the user.
-     * eg, given johndoe@example,com return ["john", "example.com"].
-     * the email is then displayed as john...@example.com
-     */
-    public function mailhideEmailParts ($email) {
-        $arr = preg_split("/@/", $email);
-
-        if (strlen($arr[0]) <= 4) {
-            $arr[0] = substr($arr[0], 0, 1);
-        } else if (strlen ($arr[0]) <= 6) {
-            $arr[0] = substr($arr[0], 0, 3);
-        } else {
-            $arr[0] = substr($arr[0], 0, 4);
-        }
-        return $arr;
-    }
-
-    /**
-     * Gets html to display an email address given a public an private key.
-     * to get a key, go to:
-     *
-     * http://mailhide.recaptcha.net/apikey
-     */
-    public function mailhideHtml($email) {
-        $emailparts = $this->mailhideEmailParts($email);
-        $url = $this->mailhideUrl($email);
-
-        return htmlentities($emailparts[0]) . "<a href='" . htmlentities ($url) .
-            "' onclick=\"window.open('" . htmlentities ($url) . "', '', 'toolbar=0,scrollbars=0,location=0,statusbar=0,menubar=0,resizable=0,width=500,height=300'); return false;\" title=\"Reveal this e-mail address\">...</a>@" . htmlentities ($emailparts [1]);
-    }
-
 
 }
 

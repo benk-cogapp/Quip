@@ -312,7 +312,7 @@ class QuipThreadReplyController extends QuipController {
             /** @var reCaptcha $recaptcha */
             $recaptcha = $this->modx->getService('recaptcha','reCaptcha',$this->quip->config['modelPath'].'recaptcha/');
             if ($recaptcha instanceof reCaptcha) {
-                $recaptchaTheme = $this->getProperty('recaptchaTheme','clean');
+                $recaptchaTheme = $this->getProperty('recaptchaTheme','light');
                 $html = $recaptcha->getHtml($recaptchaTheme);
                 $this->modx->setPlaceholder('quip.recaptcha_html',$html);
             } else {

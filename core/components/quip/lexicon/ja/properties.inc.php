@@ -34,10 +34,8 @@ $_lang['quip.author'] = 'Author';
 $_lang['quip.comment'] = 'Comment';
 $_lang['quip.descending'] = 'Descending';
 $_lang['quip.family'] = 'Family';
-$_lang['quip.opt_blackglass'] = 'Black Glass';
-$_lang['quip.opt_clean'] = 'Clean';
-$_lang['quip.opt_red'] = 'Red';
-$_lang['quip.opt_white'] = 'White';
+$_lang['quip.opt_light'] = 'Light';
+$_lang['quip.opt_dark'] = 'Dark';
 $_lang['quip.thread'] = 'Thread';
 $_lang['quip.user'] = 'User';
 
