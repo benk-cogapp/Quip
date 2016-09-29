@@ -50,12 +50,10 @@ if ($this->getProperty('recaptcha',false) && !($disableRecaptchaWhenLoggedIn && 
         } elseif (empty($recaptcha->config[reCaptcha::OPT_PRIVATE_KEY])) {
             $errors['recaptcha'] = $modx->lexicon('recaptcha.no_api_key');
         } else {
-            $response = $recaptcha->checkAnswer($_SERVER['REMOTE_ADDR'],$fields['recaptcha_challenge_field'],$fields['recaptcha_response_field']);
+            $response = $recaptcha->checkAnswer($_SERVER['REMOTE_ADDR'],$fields['g-recaptcha-response']);
 
             if (!$response->is_valid) {
-                $errors['recaptcha'] = $modx->lexicon('recaptcha.incorrect',array(
-                    'error' => $response->error != 'incorrect-captcha-sol' ? $response->error : '',
-                ));
+                $errors['recaptcha'] = $modx->lexicon('recaptcha.incorrect',array('error' => ''));
             }
         }
     }
